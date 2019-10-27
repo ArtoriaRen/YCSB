@@ -25,15 +25,15 @@ import org.junit.After;
 import site.ycsb.DB;
 
 /**
- * MongoDbClientTest provides runs the basic workload operations.
+ * PbftDbClientTest provides runs the basic workload operations.
  */
-public class MongoDbClientTest extends AbstractDBTestCases {
+public class PbftDbClientTest extends AbstractDBTestCases {
 
   /** The client to use. */
   private DB myClient = null;
 
   protected DB instantiateClient() {
-    return new MongoDbClient();
+    return new PbftDbClient();
   }
 
   /**
@@ -53,7 +53,7 @@ public class MongoDbClientTest extends AbstractDBTestCases {
   /**
    * {@inheritDoc}
    * <p>
-   * Overridden to return the {@link MongoDbClient}.
+   * Overridden to return the {@link PbftDbClient}.
    * </p>
    */
   @Override

@@ -126,7 +126,7 @@ LICENSE file.
     <!-- all the datastore bindings, lex sorted please -->
     <module>jdbc</module>
     <module>mongodb</module>
-    <module>pbft</module>
+    <module>pbftdb</module>
     <module>postgrenosql</module>
   </modules>
 
