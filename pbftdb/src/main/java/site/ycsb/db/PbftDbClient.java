@@ -38,8 +38,9 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.atomic.AtomicInteger;
 
-//import java.net.DatagramPacket;
+import java.io.IOException;
 import java.net.DatagramSocket;
+import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -81,16 +82,22 @@ public class PbftDbClient extends DB {
       }
       try {
         sender = new DatagramSocket(); 
-        ip = InetAddress.getLocalHost();
-        sendBuf = null;
+        ip = InetAddress.getByName("127.0.0.1");
+        String test = "x = 8";
+        sendBuf = test.getBytes();
+        DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, ip, 8350);
+        sender.send(pkt2Send);
 
-        receiver = new DatagramSocket(1234);
+        receiver = new DatagramSocket(12345);
         recvBuf = new byte[65535];
       } catch (SocketException e) {
         System.err.println("Error in opening sockets: " + e);
       } catch (UnknownHostException e) {
         System.err.println("Error in getting host ip: " + e);
+      } catch (IOException e) {
+        System.err.println("Error in sending packets: " + e);
       }
+
     }
   }
 
