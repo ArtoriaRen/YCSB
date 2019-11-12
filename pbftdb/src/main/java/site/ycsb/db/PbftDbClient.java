@@ -68,6 +68,7 @@ public class PbftDbClient extends DB {
   // Create a socket to receive results 
   private DatagramSocket receiver;
   private byte[] recvBuf;
+  private int printCnt;
 
   /**
    * Initialize any state for this DB. Called once per DB instance; there is one
@@ -83,13 +84,14 @@ public class PbftDbClient extends DB {
       try {
         sender = new DatagramSocket(); 
         ip = InetAddress.getByName("127.0.0.1");
-        String test = "x = 8";
+        String test = "r w,23,m";
         sendBuf = test.getBytes();
         DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, ip, 8350);
         sender.send(pkt2Send);
 
         receiver = new DatagramSocket(12345);
         recvBuf = new byte[65535];
+        printCnt = 3;
       } catch (SocketException e) {
         System.err.println("Error in opening sockets: " + e);
       } catch (UnknownHostException e) {
@@ -148,7 +150,13 @@ public class PbftDbClient extends DB {
   @Override
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
-    System.out.println("insert table =" + table + ", key = " + key);
+    if (printCnt-- > 0) {
+      System.out.println("insert table =" + table + ", key = " + key);
+      for (Map.Entry<String, ByteIterator> entry : values.entrySet()) {
+        System.out.println("key = " + entry.getKey() + ", value = " + entry.getValue().toArray());
+      }
+    }
+    // TODO: client should receive f +1 consistent result and then return OK.
     return Status.OK;
   }
 
