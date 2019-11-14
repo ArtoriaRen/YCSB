@@ -62,13 +62,16 @@ public class PbftDbClient extends DB {
 
   // Create a UDP socket to send requests
   private DatagramSocket sender; 
-  private InetAddress ip;
+  private InetAddress serverIp;
+  private int serverPort;
   private byte[] sendBuf;
 
   // Create a socket to receive results 
   private DatagramSocket receiver;
   private byte[] recvBuf;
-  private int printCnt;
+
+  // The number of faulty groups
+  private int numFaultyGroup = 1;
 
   /**
    * Initialize any state for this DB. Called once per DB instance; there is one
@@ -83,15 +86,11 @@ public class PbftDbClient extends DB {
       }
       try {
         sender = new DatagramSocket(); 
-        ip = InetAddress.getByName("127.0.0.1");
-        String test = "r w,23,m";
-        sendBuf = test.getBytes();
-        DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, ip, 8350);
-        sender.send(pkt2Send);
+        serverIp = InetAddress.getByName("127.0.0.1");
+        serverPort = 8350;
 
         receiver = new DatagramSocket(12345);
-        recvBuf = new byte[65535];
-        printCnt = 3;
+        recvBuf = new byte[65536];
       } catch (SocketException e) {
         System.err.println("Error in opening sockets: " + e);
       } catch (UnknownHostException e) {
@@ -150,13 +149,33 @@ public class PbftDbClient extends DB {
   @Override
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
-    if (printCnt-- > 0) {
-      System.out.println("insert table =" + table + ", key = " + key);
-      for (Map.Entry<String, ByteIterator> entry : values.entrySet()) {
-        System.out.println("key = " + entry.getKey() + ", value = " + entry.getValue().toArray());
-      }
+    Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
+    // TODO: client should receive F +1 consistent result and then return OK.
+    try {
+      String req = "r w," + (int)key.charAt(0) + "," + (char)entry.getValue().toArray()[0];
+      System.out.println("req string is: " + req);
+      sendBuf = req.getBytes();
+      DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
+      sender.send(pkt2Send);
+    } catch (SocketException e) {
+      System.err.println("Error in opening sockets: " + e);
+    } catch (UnknownHostException e) {
+      System.err.println("Error in getting host ip: " + e);
+    } catch (IOException e) {
+      System.err.println("Error in sending packets: " + e);
     }
-    // TODO: client should receive f +1 consistent result and then return OK.
+
+    DatagramPacket recvPacket;
+    try {
+      for(int i = 0; i < numFaultyGroup + 1; i++) {
+        recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
+        receiver.receive(recvPacket);
+        System.out.println("received: " + recvBuf);
+        recvBuf = new byte[65536];
+      }
+    } catch (IOException e) {
+      System.err.println("Error in sending packets: " + e);
+    }
     return Status.OK;
   }
 
