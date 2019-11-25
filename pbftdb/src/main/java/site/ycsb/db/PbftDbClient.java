@@ -70,8 +70,13 @@ public class PbftDbClient extends DB {
   private DatagramSocket receiver;
   private byte[] recvBuf;
 
-  // The number of faulty groups
-  private int numFaultyGroup = 1;
+  /* For pbft-dl, numFaultyGroup is the number of faulty groups; 
+   * for pbft,  numFaultyGroup is the number of faulty nodes.
+   */
+  // private int numFaultyGroup = 5; // for 16-node pbft
+  private int numFaultyGroup = 1; // for 16-node pbft-dl
+  
+  
 
   /**
    * Initialize any state for this DB. Called once per DB instance; there is one
@@ -149,10 +154,11 @@ public class PbftDbClient extends DB {
   @Override
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
+    System.out.println("insert key: " + key);
     Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
-    // TODO: client should receive F +1 consistent result and then return OK.
     try {
-      String req = "r w," + (int)key.charAt(0) + "," + (char)entry.getValue().toArray()[0];
+
+      String req = "r w," + (int)key.charAt(key.length() - 1) + "," + (char)(entry.getValue().toArray()[0]%26 + 97);
       System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
@@ -170,6 +176,9 @@ public class PbftDbClient extends DB {
       for(int i = 0; i < numFaultyGroup + 1; i++) {
         recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
         receiver.receive(recvPacket);
+        /* TODO: client should check if these results are consistent. 
+         * 1. simple sol: check the reply field without verify signatures.
+         * 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
         System.out.println("received: " + recvBuf);
         recvBuf = new byte[65536];
       }
@@ -196,7 +205,35 @@ public class PbftDbClient extends DB {
   @Override
   public Status read(String table, String key, Set<String> fields,
       Map<String, ByteIterator> result) {
-    System.out.println("read table =" + table + ", key = " + key);
+    System.out.println("read key: " + key);
+    try {
+      String req = "r r," + (int)key.charAt(key.length() - 1);
+      System.out.println("req string is: " + req);
+      sendBuf = req.getBytes();
+      DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
+      sender.send(pkt2Send);
+    } catch (SocketException e) {
+      System.err.println("Error in opening sockets: " + e);
+    } catch (UnknownHostException e) {
+      System.err.println("Error in getting host ip: " + e);
+    } catch (IOException e) {
+      System.err.println("Error in sending packets: " + e);
+    }
+
+    DatagramPacket recvPacket;
+    try {
+      for(int i = 0; i < numFaultyGroup + 1; i++) {
+        recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
+        receiver.receive(recvPacket);
+        /* TODO: client should check if these results are consistent. 
+         * 1. simple sol: check the reply field without verify signatures.
+         * 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
+        System.out.println("received: " + recvBuf);
+        recvBuf = new byte[65536];
+      }
+    } catch (IOException e) {
+      System.err.println("Error in sending packets: " + e);
+    }
     return Status.OK;
   }
 
@@ -242,7 +279,36 @@ public class PbftDbClient extends DB {
   @Override
   public Status update(String table, String key,
       Map<String, ByteIterator> values) {
-    System.out.println("update table =" + table + ", key = " + key);
+    System.out.println("update key: " + key);
+    Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
+    try {
+      String req = "r w," + (int)key.charAt(key.length() - 1) + "," + (char)(entry.getValue().toArray()[0]%26 + 97);
+      System.out.println("req string is: " + req);
+      sendBuf = req.getBytes();
+      DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
+      sender.send(pkt2Send);
+    } catch (SocketException e) {
+      System.err.println("Error in opening sockets: " + e);
+    } catch (UnknownHostException e) {
+      System.err.println("Error in getting host ip: " + e);
+    } catch (IOException e) {
+      System.err.println("Error in sending packets: " + e);
+    }
+
+    DatagramPacket recvPacket;
+    try {
+      for(int i = 0; i < numFaultyGroup + 1; i++) {
+        recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
+        receiver.receive(recvPacket);
+        /* TODO: client should check if these results are consistent. 
+         * 1. simple sol: check the reply field without verify signatures.
+         * 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
+        System.out.println("received: " + recvBuf);
+        recvBuf = new byte[65536];
+      }
+    } catch (IOException e) {
+      System.err.println("Error in sending packets: " + e);
+    }
     return Status.OK;
   }
 
