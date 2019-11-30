@@ -127,6 +127,7 @@ LICENSE file.
     <module>jdbc</module>
     <module>mongodb</module>
     <module>pbftdb</module>
+    <module>pbftDLdb</module>
     <module>postgrenosql</module>
   </modules>
 

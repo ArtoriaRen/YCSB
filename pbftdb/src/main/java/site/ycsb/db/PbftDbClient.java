@@ -59,6 +59,9 @@ import java.net.UnknownHostException;
 public class PbftDbClient extends DB {
   /** Count the number of times initialized to teardown on the last. */
   private static final AtomicInteger INIT_COUNT = new AtomicInteger(0);
+  /** Use a counter to emulate timestamp in pbft.
+   */
+  private static final AtomicInteger REQ_COUNT = new AtomicInteger(0);
 
   // Create a UDP socket to send requests
   private DatagramSocket sender; 
@@ -70,11 +73,12 @@ public class PbftDbClient extends DB {
   private DatagramSocket receiver;
   private byte[] recvBuf;
 
-  /* For pbft-dl, numFaultyGroup is the number of faulty groups; 
-   * for pbft,  numFaultyGroup is the number of faulty nodes.
+  /* For pbft-dl, numFaulty is the number of faulty groups; 
+   * for pbft,  numFaulty is the number of faulty nodes.
    */
-  // private int numFaultyGroup = 5; // for 16-node pbft
-  private int numFaultyGroup = 1; // for 16-node pbft-dl
+  private int numFaulty = 5; // for 16-node pbft
+  /* base on Reply format, the 20th byte should be the reply char */
+  private int replyIndex = 15;
   
   
 
@@ -154,11 +158,14 @@ public class PbftDbClient extends DB {
   @Override
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
-    System.out.println("insert key: " + key);
+    int timestamp = REQ_COUNT.getAndIncrement();
     Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
     try {
 
-      String req = "r w," + (int)key.charAt(key.length() - 1) + "," + (char)(entry.getValue().toArray()[0]%26 + 97);
+      String req = "r w," 
+          + (int)key.charAt(key.length() - 1) + "," 
+          + (char)(entry.getValue().toArray()[0]%26 + 97) + "," 
+          + timestamp;
       System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
@@ -173,13 +180,13 @@ public class PbftDbClient extends DB {
 
     DatagramPacket recvPacket;
     try {
-      for(int i = 0; i < numFaultyGroup + 1; i++) {
+      for(int i = 0; i < numFaulty + 1; i++) {
         recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
         receiver.receive(recvPacket);
-        /* TODO: client should check if these results are consistent. 
-         * 1. simple sol: check the reply field without verify signatures.
-         * 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
-        System.out.println("received: " + recvBuf);
+        if(!verifyReply(timestamp, recvPacket)){
+          i--;
+          continue;
+        }
         recvBuf = new byte[65536];
       }
     } catch (IOException e) {
@@ -205,9 +212,9 @@ public class PbftDbClient extends DB {
   @Override
   public Status read(String table, String key, Set<String> fields,
       Map<String, ByteIterator> result) {
-    System.out.println("read key: " + key);
+    int timestamp = REQ_COUNT.getAndIncrement();
     try {
-      String req = "r r," + (int)key.charAt(key.length() - 1);
+      String req = "r r," + (int)key.charAt(key.length() - 1) + "," + timestamp;
       System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
@@ -222,13 +229,13 @@ public class PbftDbClient extends DB {
 
     DatagramPacket recvPacket;
     try {
-      for(int i = 0; i < numFaultyGroup + 1; i++) {
+      for(int i = 0; i < numFaulty + 1; i++) {
         recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
         receiver.receive(recvPacket);
-        /* TODO: client should check if these results are consistent. 
-         * 1. simple sol: check the reply field without verify signatures.
-         * 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
-        System.out.println("received: " + recvBuf);
+        if(!verifyReply(timestamp, recvPacket)){
+          i--;
+          continue;
+        }
         recvBuf = new byte[65536];
       }
     } catch (IOException e) {
@@ -279,10 +286,13 @@ public class PbftDbClient extends DB {
   @Override
   public Status update(String table, String key,
       Map<String, ByteIterator> values) {
-    System.out.println("update key: " + key);
+    int timestamp = REQ_COUNT.getAndIncrement();
     Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
     try {
-      String req = "r w," + (int)key.charAt(key.length() - 1) + "," + (char)(entry.getValue().toArray()[0]%26 + 97);
+      String req = "r w," 
+          + (int)key.charAt(key.length() - 1) + "," 
+          + (char)(entry.getValue().toArray()[0]%26 + 97) + "," 
+          + timestamp;
       System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
@@ -297,13 +307,13 @@ public class PbftDbClient extends DB {
 
     DatagramPacket recvPacket;
     try {
-      for(int i = 0; i < numFaultyGroup + 1; i++) {
+      for(int i = 0; i < numFaulty + 1; i++) {
         recvPacket = new DatagramPacket(recvBuf, recvBuf.length);
         receiver.receive(recvPacket);
-        /* TODO: client should check if these results are consistent. 
-         * 1. simple sol: check the reply field without verify signatures.
-         * 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
-        System.out.println("received: " + recvBuf);
+        if(!verifyReply(timestamp, recvPacket)){
+          i--;
+          continue;
+        }
         recvBuf = new byte[65536];
       }
     } catch (IOException e) {
@@ -312,4 +322,18 @@ public class PbftDbClient extends DB {
     return Status.OK;
   }
 
+/* TODO: client should check if these results are consistent. 
+* 1. simple sol: check the reply field without verify signatures.
+* 2. verify sigs. Need public keys of servers (can get from blockchain) and verify signature. */
+  private boolean verifyReply(int ts, DatagramPacket recvPacket){
+    String msg = new String(recvBuf, 0, recvPacket.getLength());
+    String[] fields = msg.split(" ");
+    // field 3 is the reply field, 4 is the timestamp field.
+    if (Integer.parseInt(fields[4]) == ts){
+      System.out.println("received: reply =  " + fields[3]);
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
