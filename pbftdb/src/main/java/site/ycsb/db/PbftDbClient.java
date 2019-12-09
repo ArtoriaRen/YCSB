@@ -77,8 +77,6 @@ public class PbftDbClient extends DB {
    * for pbft,  numFaulty is the number of faulty nodes.
    */
   private int numFaulty = 5; // for 16-node pbft
-  /* base on Reply format, the 20th byte should be the reply char */
-  private int replyIndex = 15;
   
   
 
@@ -166,7 +164,7 @@ public class PbftDbClient extends DB {
           + (int)key.charAt(key.length() - 1) + "," 
           + (char)(entry.getValue().toArray()[0]%26 + 97) + "," 
           + timestamp;
-      System.out.println("req string is: " + req);
+      //System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
       sender.send(pkt2Send);
@@ -215,7 +213,7 @@ public class PbftDbClient extends DB {
     int timestamp = REQ_COUNT.getAndIncrement();
     try {
       String req = "r r," + (int)key.charAt(key.length() - 1) + "," + timestamp;
-      System.out.println("req string is: " + req);
+      //System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
       sender.send(pkt2Send);
@@ -293,7 +291,7 @@ public class PbftDbClient extends DB {
           + (int)key.charAt(key.length() - 1) + "," 
           + (char)(entry.getValue().toArray()[0]%26 + 97) + "," 
           + timestamp;
-      System.out.println("req string is: " + req);
+      //System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
       sender.send(pkt2Send);
@@ -329,11 +327,14 @@ public class PbftDbClient extends DB {
     String msg = new String(recvBuf, 0, recvPacket.getLength());
     String[] fields = msg.split(" ");
     // field 3 is the reply field, 4 is the timestamp field.
+    /*
     if (Integer.parseInt(fields[4]) == ts){
-      System.out.println("received: reply =  " + fields[3]);
+      //System.out.println("received: reply =  " + fields[3]);
       return true;
     } else {
       return false;
     }
+    */
+    return Integer.parseInt(fields[4]) == ts;
   }
 }

@@ -154,14 +154,14 @@ public class PbftDLDbClient extends DB {
   public Status insert(String table, String key,
       Map<String, ByteIterator> values) {
     int timestamp = REQ_COUNT.getAndIncrement();
-    System.out.println("insert key: " + key);
+    //System.out.println("insert key: " + key);
     Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
     try {
       String req = "r w," 
           + (int)key.charAt(key.length() - 1) + "," 
           + (char)(entry.getValue().toArray()[0]%26 + 97) + ","
           + timestamp;
-      System.out.println("req string is: " + req);
+      //System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
       sender.send(pkt2Send);
@@ -208,12 +208,12 @@ public class PbftDLDbClient extends DB {
   public Status read(String table, String key, Set<String> fields,
       Map<String, ByteIterator> result) {
     int timestamp = REQ_COUNT.getAndIncrement();
-    System.out.println("read key: " + key);
+    //System.out.println("read key: " + key);
     try {
       String req = "r r," 
           + (int)key.charAt(key.length() - 1) + ","
           + timestamp;
-      System.out.println("req string is: " + req);
+      //System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
       sender.send(pkt2Send);
@@ -285,14 +285,14 @@ public class PbftDLDbClient extends DB {
   public Status update(String table, String key,
       Map<String, ByteIterator> values) {
     int timestamp = REQ_COUNT.getAndIncrement();
-    System.out.println("update key: " + key);
+    //System.out.println("update key: " + key);
     Map.Entry<String, ByteIterator> entry = values.entrySet().iterator().next();
     try {
       String req = "r w," 
           + (int)key.charAt(key.length() - 1) + "," 
           + (char)(entry.getValue().toArray()[0]%26 + 97) + "," 
           + timestamp;
-      System.out.println("req string is: " + req);
+      //System.out.println("req string is: " + req);
       sendBuf = req.getBytes();
       DatagramPacket pkt2Send = new DatagramPacket(sendBuf, sendBuf.length, serverIp, serverPort);
       sender.send(pkt2Send);
@@ -328,11 +328,14 @@ public class PbftDLDbClient extends DB {
     String msg = new String(recvBuf, 0, recvPacket.getLength());
     String[] fields = msg.split(" ");
     // field 5 is the reply field, 6 is the timestamp field.
+    /*
     if (Integer.parseInt(fields[6]) == ts){
       System.out.println("received: reply = " + fields[5]);
       return true;
     } else {
       return false;
     }
+    */
+    return Integer.parseInt(fields[6]) == ts;
   }
 }
